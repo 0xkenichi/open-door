@@ -2,9 +2,11 @@
 // (res/sputnikdao2.wasm, pulled from a live sputnik-v2.testnet DAO).
 import test from "ava";
 import crypto from "node:crypto";
-import { Worker, NEAR } from "near-workspaces";
+import { Worker, parseNEAR } from "near-workspaces";
 
-const BOND = NEAR.parse("0.1 N").toString();
+const yocto = (n) => BigInt(parseNEAR(n));
+
+const BOND = parseNEAR("0.1");
 const codeHash = (sessionId, code) =>
   crypto.createHash("sha256").update(`${sessionId}:${code.trim().toUpperCase()}`).digest("hex");
 
@@ -28,7 +30,7 @@ function daoPolicy(council) {
     default_vote_policy: { weight_kind: "RoleWeight", quorum: "0", threshold: [1, 2] },
     proposal_bond: BOND,
     proposal_period: "86400000000000",
-    bounty_bond: NEAR.parse("1 N").toString(),
+    bounty_bond: parseNEAR("1"),
     bounty_forgiveness_period: "86400000000000",
   };
 }
@@ -36,12 +38,12 @@ function daoPolicy(council) {
 test.beforeEach(async (t) => {
   const worker = await Worker.init();
   const root = worker.rootAccount;
-  const mk = (name, amount) => root.createSubAccount(name, { initialBalance: NEAR.parse(amount).toJSON() });
-  const host = await mk("host", "20 N");
-  const alice = await mk("alice", "10 N");
-  const bob = await mk("bob", "10 N");
-  const dao = await mk("dao", "30 N");
-  const door = await mk("door", "10 N");
+  const mk = (name, amount) => root.createSubAccount(name, { initialBalance: yocto(amount) });
+  const host = await mk("host", "20");
+  const alice = await mk("alice", "10");
+  const bob = await mk("bob", "10");
+  const dao = await mk("dao", "30");
+  const door = await mk("door", "10");
 
   await dao.deploy("res/sputnikdao2.wasm");
   await dao.call(dao, "new", {
@@ -69,7 +71,7 @@ test.afterEach.always(async (t) => {
   await t.context.worker.tearDown().catch(() => {});
 });
 
-const GAS = "300000000000000";
+const GAS = 300000000000000n;
 
 test("third check-in files an AddMemberToRole proposal on the DAO", async (t) => {
   const { alice, dao, door, open } = t.context;
@@ -109,13 +111,13 @@ test("council approves, the new member votes a treasury transfer through", async
   t.deepEqual(policy.roles.find((r) => r.name === "member").kind, { Group: [alice.accountId] });
 
   // Alice, who earned the role by showing up, proposes and passes a payout to the host.
-  const transfer = { Transfer: { token_id: "", receiver_id: host.accountId, amount: NEAR.parse("1 N").toString() } };
+  const transfer = { Transfer: { token_id: "", receiver_id: host.accountId, amount: parseNEAR("1") } };
   const before = (await host.balance()).total;
-  await alice.call(dao, "add_proposal", { proposal: { description: "Pay this week's call host 1 NEAR", kind: transfer } }, { attachedDeposit: BOND, gas: GAS });
+  await alice.call(dao, "add_proposal", { proposal: { description: "Pay this week's call host 1 NEAR", kind: transfer } }, { attachedDeposit: BigInt(BOND), gas: GAS });
   await alice.call(dao, "act_proposal", { id: 1, action: "VoteApprove", proposal: transfer }, { gas: GAS });
   t.is((await dao.view("get_proposal", { id: 1 })).status, "Approved");
   const after = (await host.balance()).total;
-  t.true(after.gt(before), "host received the treasury payout");
+  t.true(BigInt(after) > BigInt(before), "host received the treasury payout");
 });
 
 test("wrong code, double check-in and closed calls are rejected", async (t) => {

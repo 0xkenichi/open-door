@@ -17,8 +17,13 @@
     "near-workspaces": "5.0.0"
   },
   "ava": {
-    "files": ["tests/**/*.test.mjs"],
+    "files": [
+      "tests/**/*.test.mjs"
+    ],
     "timeout": "10m",
     "concurrency": 1
+  },
+  "overrides": {
+    "@types/node": "16.18.126"
   }
 }

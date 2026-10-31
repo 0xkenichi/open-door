@@ -50,6 +50,18 @@ To run your own copy:
 - Then `node scripts/demo-testnet.mjs` runs the loop.
 - Demo keys go to `./.near-credentials`, which is git-ignored.
 
+## Web app (`web/`, no build step)
+
+The web app is static HTML and JS. It reads state over NEAR JSON-RPC and signs with NEAR Wallet Selector 10 (MyNearWallet, Meteor, HERE, Intear), loaded from a CDN.
+
+- **Sign in:** this creates a **function-call access key limited to `check_in`** on the Open Door contract, so a check-in is one tap with no wallet pop-up.
+- **Screens:**
+  - **Today's call:** pick the open call, type the code, check in.
+  - **Your path to a vote:** check-in dots, calls still needed, and the proposal status.
+  - **Host a call:** hosts only. It generates a code, shows it large for screen-share, sends only its hash on chain, and lets the host close calls.
+  - **The door:** who is showing up, and who has earned the DAO `member` role (read live from `get_policy`).
+- **Run locally:** `python3 -m http.server 5180 --directory web`, then open http://localhost:5180. Settings are in `web/config.js`.
+
 ## Contract API (`src/contract.ts`, near-sdk-js)
 
 | Method | Who | What |

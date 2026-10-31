@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Open Door · Show up, get a say</title>
+  <meta name="description" content="Earn a vote in your community's DAO by showing up. Built on Sputnik DAO, NEAR." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="stylesheet" href="https://unpkg.com/@near-wallet-selector/modal-ui@10.1.4/styles.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="door" aria-hidden="true"></span>
+      <div>
+        <h1>Open Door</h1>
+        <p class="tag">Show up, get a say.</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <span class="pill" id="network">NEAR testnet</span>
+      <button id="auth" class="btn">Sign in</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card" id="checkin-card">
+      <h2>Today's call</h2>
+      <p class="muted" id="session-hint">Loading calls…</p>
+      <form id="checkin-form" class="row" autocomplete="off">
+        <select id="session" aria-label="Call"></select>
+        <input id="code" placeholder="Code read out on the call" aria-label="Check-in code" maxlength="32" />
+        <button class="btn primary" id="checkin-btn" type="submit">Check in</button>
+      </form>
+      <p class="status" id="checkin-status" role="status"></p>
+    </section>
+
+    <section class="card" id="record-card">
+      <h2>Your path to a vote</h2>
+      <div id="record"><p class="muted">Sign in to see your check-ins.</p></div>
+    </section>
+
+    <section class="card" id="host-card" hidden>
+      <h2>Host a call</h2>
+      <form id="host-form" class="row" autocomplete="off">
+        <input id="host-title" placeholder="Call title, e.g. Community call #4" required />
+        <input id="host-minutes" type="number" min="10" max="600" value="120" aria-label="Minutes open" />
+        <button class="btn primary" type="submit">Open call</button>
+      </form>
+      <div id="host-code" class="bigcode" hidden></div>
+      <div id="host-sessions"></div>
+    </section>
+
+    <section class="card wide" id="board-card">
+      <h2>The door</h2>
+      <p class="muted" id="rule"></p>
+      <div class="grid2">
+        <div>
+          <h3>Showing up</h3>
+          <ul id="members" class="list"><li class="muted">Loading…</li></ul>
+        </div>
+        <div>
+          <h3>DAO voters (member role)</h3>
+          <ul id="voters" class="list"><li class="muted">Loading…</li></ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Built on <a href="https://github.com/near-daos/sputnik-dao-contract">Sputnik DAO</a>: no new multisig.</span>
+    <span id="links"></span>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

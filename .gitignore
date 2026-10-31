@@ -3,3 +3,4 @@ build/
 .env
 *.log
 .near-credentials/
+.demo-state.json

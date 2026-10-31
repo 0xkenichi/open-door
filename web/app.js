@@ -166,22 +166,27 @@ $("checkin-form").addEventListener("submit", async (e) => {
 
 // ---------- record ----------
 
+// Read-only "view as" mode (?as=account.testnet): shows anyone's public path to a vote without signing in.
+const viewAs = new URLSearchParams(location.search).get("as");
+
 async function renderRecord(voters) {
   const box = $("record");
-  if (!accountId) {
+  const who = accountId || viewAs;
+  if (!who) {
     box.innerHTML = `<p class="muted">Sign in to see your check-ins.</p>`;
     return;
   }
-  const m = await view(CONFIG.doorId, "get_member", { account_id: accountId });
+  const m = await view(CONFIG.doorId, "get_member", { account_id: who });
+  const viewing = !accountId ? `<p class="muted">Viewing ${short(who)} (read-only)</p>` : "";
   const count = m?.count_in_window ?? 0;
   const threshold = config.threshold;
   const dots = Array.from({ length: threshold }, (_, i) => `<span class="dot ${i < count ? "on" : ""}"></span>`).join("");
   let line;
-  if (voters.includes(accountId)) line = `You're a voter. The door is open.`;
+  if (voters.includes(who)) line = `${accountId ? "You're" : "They're"} a voter. The door is open.`;
   else if (m?.status === "proposed")
-    line = `Proposal #${m.proposal_id} to give you a vote is waiting for the council.`;
-  else line = `${Math.max(0, threshold - count)} more call(s) in ${config.window_days} days to earn your vote.`;
-  box.innerHTML = `
+    line = `Proposal #${m.proposal_id} to give ${accountId ? "you" : "them"} a vote is waiting for the council.`;
+  else line = `${Math.max(0, threshold - count)} more call(s) in ${config.window_days} days to earn ${accountId ? "your" : "their"} vote.`;
+  box.innerHTML = `${viewing}
     <div class="dots" aria-label="${count} of ${threshold} check-ins">${dots}</div>
     <p class="big">${count} of ${threshold} calls</p>
     <p>${line}</p>

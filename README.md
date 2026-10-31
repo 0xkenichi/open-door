@@ -31,6 +31,25 @@ Hosts can `void_check_in` a check-in they believe was faked. That account can't 
 | Test 4: a non-host opens a call, then a host voids a check-in | The non-host is rejected, and Alice's count drops back to 0 |
 | Test 5: read a session through the views | The check-in code hash is never returned |
 
+## Live on NEAR testnet
+
+| Piece | Account |
+|---|---|
+| Open Door contract | [`opendoor-door-vw50k1.testnet`](https://testnet.nearblocks.io/address/opendoor-door-vw50k1.testnet) |
+| Sputnik DAO (made by the official `sputnik-v2.testnet` factory) | [`opendoor-vw50k1.sputnik-v2.testnet`](https://testnet.nearblocks.io/address/opendoor-vw50k1.sputnik-v2.testnet) |
+| Host (council) / Alice (member) | `host.opendoor-vw50k1.testnet` / `alice.opendoor-vw50k1.testnet` |
+
+**Full loop run on testnet on 31 Oct 2026** (`node scripts/demo-testnet.mjs`):
+1. Alice's 3rd check-in files the DAO proposal: [tx](https://testnet.nearblocks.io/txns/AANyQV6ogYZjZwYp4iJQN39h5PPXGUsAvDHjpMx21p3G). It logs `door_opened` with proposal 0.
+2. The council approves: [tx](https://testnet.nearblocks.io/txns/GddksF7L71MCMZ9i6KmdWb1bNz4LDbeNrnCnQYe7zmVL). Alice is now in `member`.
+3. Alice proposes a 0.5 NEAR payout to the host: [tx](https://testnet.nearblocks.io/txns/9pvKrqTerDox2AFPpBtjpwh7zxStPNHjVdFxiVRo8bmE).
+4. Alice votes it through, with status `Approved`: [tx](https://testnet.nearblocks.io/txns/FMX2qRkszrtjJRnxsqnQtgkMmtmfzP2nwdRV5XCv9HbV).
+
+To run your own copy:
+- `npm run build && node scripts/deploy-testnet.mjs` creates fresh demo accounts through the testnet helper, a DAO through the factory, and the contract.
+- Then `node scripts/demo-testnet.mjs` runs the loop.
+- Demo keys go to `./.near-credentials`, which is git-ignored.
+
 ## Contract API (`src/contract.ts`, near-sdk-js)
 
 | Method | Who | What |

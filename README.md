@@ -1,0 +1,63 @@
+# Open Door
+
+**Show up, get a say.** Open Door lets a community's members earn a voting role in its Sputnik DAO by attending community calls. After enough check-ins, the contract files the DAO proposal that adds them to the voting role. The council still approves it, and from then on the new member votes on treasury spending.
+
+Built at **NEAR HACKATHON** (track: `social`, also `open`).
+
+## The problem
+
+In most DAOs, the people who turn up every week, answer newcomers and run the calls have no vote. Votes sit with a small council or whoever bought tokens early. Adding a contributor is a manual favour, so access depends on knowing the right person.
+
+Open Door turns showing up into a verifiable, rule-based path to a vote, on top of the multisig the community already uses.
+
+## How it works
+
+1. **A host opens a call.** A council member calls `open_session` with a hash of a short code, such as `DOOR-4821`, and reads the code out during the call. Only the hash is stored, and no view returns it.
+2. **Members check in.** A member calls `check_in` with the code. The contract checks the session is open, the code matches, and this account hasn't already checked in. Every check-in is tied to a NEAR named account and logged as a `checked_in` event.
+3. **The door opens.** On a member's `threshold`-th check-in inside `window_days` (default 3 in 30 days), the contract calls the DAO's `add_proposal` with `AddMemberToRole { member_id, role: "member" }`, pays the proposal bond itself, and lists the calls attended in the description.
+4. **The council decides.** It approves or rejects in Sputnik DAO as usual. The contract only proposes; it never gives itself power.
+5. **The member votes.** The `member` role can propose and vote on `transfer` proposals, so the new member helps decide where the treasury goes.
+
+Hosts can `void_check_in` a check-in they believe was faked. That account can't re-check-in to that call, and the check-in stops counting.
+
+## Do X, see Y
+
+| Do | See |
+|---|---|
+| `npm install && npm test` | The contract builds to `build/open_door.wasm`, and 5 sandbox tests run against the real Sputnik DAO v2 wasm (`res/sputnikdao2.wasm`) |
+| Test 1: Alice checks in to 3 calls | After the 3rd check-in, `dao.get_proposal({id:0})` is `AddMemberToRole { member_id: alice, role: "member" }`, proposed by the Open Door contract |
+| Test 2: the council approves, then Alice proposes and votes "pay the host 1 NEAR" | `get_policy` shows Alice in `member`, the transfer proposal is `Approved`, and the host's balance goes up |
+| Test 3: wrong code, the same call twice, a closed call | Each is rejected with a clear error |
+| Test 4: a non-host opens a call, then a host voids a check-in | The non-host is rejected, and Alice's count drops back to 0 |
+| Test 5: read a session through the views | The check-in code hash is never returned |
+
+## Contract API (`src/contract.ts`, near-sdk-js)
+
+| Method | Who | What |
+|---|---|---|
+| `init({dao_id, hosts, threshold, window_days, role, bond})` | deployer | Configure the DAO, the hosts and the rule |
+| `open_session({session_id, title, duration_minutes, code_hash})` | host | Open a call. `code_hash = sha256("<session_id>:<CODE>")`, with the code uppercased |
+| `close_session({session_id})` | host | Close a call early |
+| `void_check_in({session_id, account_id})` | host | Remove a faked check-in |
+| `check_in({session_id, code})` | anyone | Check in. On reaching the threshold, files the DAO proposal |
+| `get_config`, `get_session`, `get_sessions`, `get_member`, `get_members` | view | Public board data. Never returns code hashes |
+
+Events (NEP-297 style, `standard: "open_door"`): `session_opened`, `checked_in`, `door_opened`, `door_failed`, `check_in_voided`, `session_closed`.
+
+## DAO set-up (Sputnik DAO v2)
+
+The DAO policy has three roles:
+- `all`: anyone can add proposals.
+- `council`: the hosts, with full voting.
+- `member`: starts empty and is earned through Open Door. It can propose and vote on `transfer` proposals.
+
+`proposal_bond` must equal the Open Door `bond` (0.1 NEAR on testnet). Keep the Open Door contract funded for bonds, which are refunded when proposals finish. See `daoPolicy()` in `tests/open-door.test.mjs`.
+
+## Built with
+- `near-sdk-js` 2.0.0, `near-workspaces` 5.0.0, `ava`.
+- Sputnik DAO v2 (unmodified): the wasm in `res/` was read with `view_code` from a live DAO created by `sputnik-v2.testnet`.
+- **AI disclosure:** the contract, tests and docs were written with Claude Code (Anthropic) as a pair programmer, directed and reviewed by the author.
+- **Baseline:** this is a new repository started on 31 Oct 2026. It uses no code from the author's other projects.
+
+## License
+MIT. See `LICENSE`.

@@ -1,0 +1,24 @@
+{
+  "name": "open-door",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Show up, get a say: members earn a Sputnik DAO voting role by checking in at community calls.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "near-sdk-js build src/contract.ts build/open_door.wasm",
+    "test": "npm run build && ava"
+  },
+  "dependencies": {
+    "near-sdk-js": "2.0.0"
+  },
+  "devDependencies": {
+    "ava": "^6.1.3",
+    "near-workspaces": "5.0.0"
+  },
+  "ava": {
+    "files": ["tests/**/*.test.mjs"],
+    "timeout": "10m",
+    "concurrency": 1
+  }
+}

@@ -45,6 +45,13 @@ Hosts can `void_check_in` a check-in they believe was faked. That account can't 
 3. Alice proposes a 0.5 NEAR payout to the host: [tx](https://testnet.nearblocks.io/txns/9pvKrqTerDox2AFPpBtjpwh7zxStPNHjVdFxiVRo8bmE).
 4. Alice votes it through, with status `Approved`: [tx](https://testnet.nearblocks.io/txns/FMX2qRkszrtjJRnxsqnQtgkMmtmfzP2nwdRV5XCv9HbV).
 
+**Second run, with a brand-new member, Ada (`ada-6geh.testnet`), on 31 Oct 2026** (`node scripts/demo-step.mjs …`):
+- Ada checks in to 3 calls. The 3rd check-in files proposal #2.
+- The council approves it: [tx](https://testnet.nearblocks.io/txns/9bvoektjPoaNgmbkZoTiMx1nQv3L8XTLZp3vtc3dg8sb).
+- Ada proposes payout #3: [tx](https://testnet.nearblocks.io/txns/HteCwKCPs11ybZX6JvPodyjNBVwuDjP4p3YhKB4JQKD1). With two earned voters, Sputnik needs a majority, so Ada [votes](https://testnet.nearblocks.io/txns/HJMVCyGtDsoWJu8zHF8ARYoHbmS9AWJE3mjdB8NnQz71) and Alice [votes](https://testnet.nearblocks.io/txns/C6bc82apDTjNoPBiDFV7LLrym2Woug4nSRVqz29R8Hjj). Status: `Approved`, and 0.2 NEAR goes to the host.
+
+To view any member's progress without signing in, open the web app with `?as=<account>`, for example `?as=ada-6geh.testnet`.
+
 To run your own copy:
 - `npm run build && node scripts/deploy-testnet.mjs` creates fresh demo accounts through the testnet helper, a DAO through the factory, and the contract.
 - Then `node scripts/demo-testnet.mjs` runs the loop.

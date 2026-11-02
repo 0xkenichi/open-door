@@ -4,3 +4,4 @@ build/
 *.log
 .near-credentials/
 .demo-state.json
+src/web4-files.ts

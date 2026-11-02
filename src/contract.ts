@@ -14,6 +14,7 @@ import {
   assert,
   encode,
 } from "near-sdk-js";
+import { WEB4_FILES } from "./web4-files";
 
 const NS_PER_DAY = BigInt("86400000000000");
 const GAS_PROPOSAL = BigInt("50000000000000"); // 50 Tgas for add_proposal
@@ -279,6 +280,18 @@ export class OpenDoor {
         proposal_id: m.proposal_id,
       };
     });
+  }
+
+  // ---------- web4: the contract serves its own web app at <account>.testnet.page ----------
+
+  @view({})
+  web4_get({ request }: { request: { path?: string } }) {
+    const p = !request?.path || request.path === "/" ? "/index.html" : request.path;
+    const f = WEB4_FILES[p];
+    if (!f) {
+      return { status: 404, contentType: "text/plain; charset=utf-8", body: "Tm90IGZvdW5k" }; // "Not found"
+    }
+    return { contentType: f.t, body: f.b };
   }
 
   // ---------- helpers ----------

@@ -153,3 +153,14 @@ test("the check-in code is never readable from views", async (t) => {
   t.is(s.code_hash, undefined);
   t.is(s.title, "Community call h1");
 });
+
+test("web4: the contract serves its own web app", async (t) => {
+  const { door } = t.context;
+  const home = await door.view("web4_get", { request: { path: "/" } });
+  t.regex(home.contentType, /text\/html/);
+  t.regex(Buffer.from(home.body, "base64").toString(), /<title>Open Door/);
+  const js = await door.view("web4_get", { request: { path: "/app.js" } });
+  t.regex(js.contentType, /javascript/);
+  const missing = await door.view("web4_get", { request: { path: "/nope" } });
+  t.is(missing.status, 404);
+});

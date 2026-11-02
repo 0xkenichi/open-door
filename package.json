@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "near-sdk-js build src/contract.ts build/open_door.wasm",
+    "build": "node scripts/gen-web4.mjs && near-sdk-js build src/contract.ts build/open_door.wasm",
     "test": "npm run build && ava"
   },
   "dependencies": {

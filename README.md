@@ -33,6 +33,10 @@ Hosts can `void_check_in` a check-in they believe was faked. That account can't 
 
 ## Live on NEAR testnet
 
+**Web app, served by the contract itself through web4:** https://opendoor-door-vw50k1.testnet.page
+
+To see a member's earned vote, open https://opendoor-door-vw50k1.testnet.page/?as=ada-6geh.testnet
+
 | Piece | Account |
 |---|---|
 | Open Door contract | [`opendoor-door-vw50k1.testnet`](https://testnet.nearblocks.io/address/opendoor-door-vw50k1.testnet) |
@@ -68,12 +72,14 @@ The web app is static HTML and JS. It reads state over NEAR JSON-RPC and signs w
   - **Host a call:** hosts only. It generates a code, shows it large for screen-share, sends only its hash on chain, and lets the host close calls.
   - **The door:** who is showing up, and who has earned the DAO `member` role (read live from `get_policy`).
 - **Run locally:** `python3 -m http.server 5180 --directory web`, then open http://localhost:5180. Settings are in `web/config.js`.
+- **Hosted on NEAR (web4):** `npm run build` packs `web/` into the contract (`scripts/gen-web4.mjs` generates `src/web4-files.ts`). The contract's `web4_get` view serves it at `https://<contract-account>.testnet.page`, so no separate web host is needed. `node scripts/redeploy-testnet.mjs` upgrades the deployed contract's code in place, keeping its state.
 
 ## Contract API (`src/contract.ts`, near-sdk-js)
 
 | Method | Who | What |
 |---|---|---|
 | `init({dao_id, hosts, threshold, window_days, role, bond})` | deployer | Configure the DAO, the hosts and the rule |
+| `web4_get({request})` | view | Serves the web app (web4) |
 | `open_session({session_id, title, duration_minutes, code_hash})` | host | Open a call. `code_hash = sha256("<session_id>:<CODE>")`, with the code uppercased |
 | `close_session({session_id})` | host | Close a call early |
 | `void_check_in({session_id, account_id})` | host | Remove a faked check-in |

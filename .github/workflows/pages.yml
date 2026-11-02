@@ -1,11 +1,9 @@
-# Publishes the static web app in web/ to GitHub Pages on every push to main.
+# Optional mirror of the web app on GitHub Pages. Run manually from the Actions tab.
+# The primary host is web4: the contract serves web/ at https://opendoor-door-vw50k1.testnet.page.
 # One-time setup once the repo is public: Settings → Pages → Source: GitHub Actions.
 name: Deploy web app to Pages
 
 on:
-  push:
-    branches: [main]
-    paths: ["web/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:

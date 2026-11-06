@@ -289,7 +289,9 @@ async function refresh() {
 
 async function main() {
   config = await view(CONFIG.doorId, "get_config");
-  $("rule").textContent = `${config.threshold} check-ins within ${config.window_days} days files a proposal to add you to "${config.role}". The DAO council approves it.`;
+  $("rule").textContent =
+    `${config.threshold} check-ins within ${config.window_days} days files a proposal to add you to "${config.role}". The DAO council approves it. ` +
+    `Use it or lose it: after ${config.inactive_days ?? 30} days without a check-in, anyone can ask the council to remove the role. Show up again to earn it back.`;
   $("links").innerHTML = `<a href="${explorerAccount(CONFIG.doorId)}" target="_blank" rel="noopener">Contract</a> · <a href="${explorerAccount(CONFIG.daoId)}" target="_blank" rel="noopener">DAO</a> · <a href="${CONFIG.repo}" target="_blank" rel="noopener">Code</a>`;
   await refresh();
   initWallet().then(refresh);

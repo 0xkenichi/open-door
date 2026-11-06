@@ -34,8 +34,10 @@ type Session = {
 type Member = {
   checkins: { session_id: string; at: string }[];
   voided: string[];
-  status: "none" | "pending" | "proposed";
+  status: "none" | "pending" | "proposed" | "pending_removal";
   proposal_id: number | null;
+  removal_proposal_id?: number | null;
+  reset_at?: string; // check-ins before this (ns) no longer count, set when a door is closed
 };
 
 function toHex(bytes: Uint8Array): string {
@@ -64,6 +66,7 @@ export class OpenDoor {
   window_days = 30;
   role = "member";
   bond = "100000000000000000000000"; // 0.1 NEAR, must match the DAO's proposal_bond
+  inactive_days = 30; // "use it or lose it": no check-in for this long and anyone can sweep
   sessions = new UnorderedMap<Session>("s");
   members = new LookupMap<Member>("m");
   member_list: string[] = [];
@@ -76,6 +79,7 @@ export class OpenDoor {
     window_days = 30,
     role = "member",
     bond = "100000000000000000000000",
+    inactive_days = 30,
   }: {
     dao_id: string;
     hosts: string[];
@@ -83,6 +87,7 @@ export class OpenDoor {
     window_days?: number;
     role?: string;
     bond?: string;
+    inactive_days?: number;
   }) {
     assert(hosts.length > 0, "At least one host is required");
     assert(threshold >= 1, "threshold must be at least 1");
@@ -92,6 +97,7 @@ export class OpenDoor {
     this.window_days = window_days;
     this.role = role;
     this.bond = bond;
+    this.inactive_days = inactive_days;
   }
 
   // ---------- hosts ----------
@@ -220,6 +226,62 @@ export class OpenDoor {
     }
   }
 
+  // ---------- use it or lose it ----------
+
+  // Anyone can call this for a member who earned a door but has not checked in for inactive_days.
+  // The contract files RemoveMemberFromRole on the DAO; the council still decides.
+  @call({})
+  sweep({ account_id }: { account_id: string }): NearPromise {
+    const m = this.members.get(account_id);
+    assert(m !== null, "Unknown member");
+    assert(m.status === "proposed", "Nothing to sweep: this member has no open door");
+    const now = near.blockTimestamp();
+    const last = m.checkins.length ? BigInt(m.checkins[m.checkins.length - 1].at) : BigInt(0);
+    const days = this.inactiveDays();
+    const limit = BigInt(Math.round(days * 86400)) * BigInt(1_000_000_000);
+    assert(now - last > limit, `Still active: checked in within the last ${days} days`);
+    m.status = "pending_removal";
+    this.members.set(account_id, m);
+    const description =
+      `Open Door: ${account_id} has not checked in for ${days}+ days. ` +
+      `Proposed: remove from role ${this.role}. They can earn it back by showing up.`;
+    const args = JSON.stringify({
+      proposal: { description, kind: { RemoveMemberFromRole: { member_id: account_id, role: this.role } } },
+    });
+    return NearPromise.new(this.dao_id)
+      .functionCall("add_proposal", args, BigInt(this.bond), GAS_PROPOSAL)
+      .then(
+        NearPromise.new(near.currentAccountId()).functionCall(
+          "on_removal",
+          JSON.stringify({ account_id }),
+          BigInt(0),
+          GAS_CALLBACK
+        )
+      )
+      .asReturn();
+  }
+
+  @call({ privateFunction: true })
+  on_removal({ account_id }: { account_id: string }): number | null {
+    const m = this.members.get(account_id);
+    assert(m !== null, "Unknown member");
+    try {
+      const id = Number(JSON.parse(near.promiseResult(0)));
+      // The door can be earned again: 3 new check-ins file a fresh AddMemberToRole.
+      m.status = "none";
+      m.removal_proposal_id = id;
+      m.reset_at = near.blockTimestamp().toString();
+      this.members.set(account_id, m);
+      emit("door_closed", { account_id, dao_id: this.dao_id, proposal_id: id, role: this.role });
+      return id;
+    } catch (_e) {
+      m.status = "proposed";
+      this.members.set(account_id, m);
+      emit("door_close_failed", { account_id, dao_id: this.dao_id });
+      return null;
+    }
+  }
+
   // ---------- views ----------
 
   @view({})
@@ -231,6 +293,7 @@ export class OpenDoor {
       window_days: this.window_days,
       role: this.role,
       bond: this.bond,
+      inactive_days: this.inactiveDays(),
     };
   }
 
@@ -265,6 +328,7 @@ export class OpenDoor {
       threshold: this.threshold,
       status: m.status,
       proposal_id: m.proposal_id,
+      removal_proposal_id: m.removal_proposal_id ?? null,
     };
   }
 
@@ -306,8 +370,14 @@ export class OpenDoor {
     return s as Session;
   }
 
+  // Contracts upgraded from a version without inactive_days have no stored value: default to 30.
+  private inactiveDays(): number {
+    return typeof this.inactive_days === "number" ? this.inactive_days : 30;
+  }
+
   private countInWindow(m: Member, now: bigint): number {
-    const since = now - BigInt(this.window_days) * NS_PER_DAY;
-    return m.checkins.filter((c) => BigInt(c.at) >= since).length;
+    let since = now - BigInt(this.window_days) * NS_PER_DAY;
+    if (m.reset_at && BigInt(m.reset_at) > since) since = BigInt(m.reset_at);
+    return m.checkins.filter((c) => BigInt(c.at) > since).length;
   }
 }

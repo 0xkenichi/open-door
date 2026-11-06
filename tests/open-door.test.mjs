@@ -164,3 +164,69 @@ test("web4: the contract serves its own web app", async (t) => {
   const missing = await door.view("web4_get", { request: { path: "/nope" } });
   t.is(missing.status, 404);
 });
+
+test("use it or lose it: an inactive voter is swept, and must show up again to earn it back", async (t) => {
+  const { worker, host, alice, dao } = t.context;
+  // A second Open Door on the same DAO with a ~9 second inactivity limit, so the test does not wait 30 days.
+  const quick = await worker.rootAccount.createSubAccount("quick", { initialBalance: yocto("10") });
+  await quick.deploy("build/open_door.wasm");
+  await quick.call(quick, "init", { dao_id: dao.accountId, hosts: [host.accountId], threshold: 3, window_days: 30, role: "member", bond: BOND, inactive_days: 0.0001 });
+  const openQ = (id, code) =>
+    host.call(quick, "open_session", { session_id: id, title: id, duration_minutes: 120, code_hash: codeHash(id, code) });
+
+  for (const [id, code] of [["q1", "Q1"], ["q2", "Q2"], ["q3", "Q3"]]) {
+    await openQ(id, code);
+    await alice.call(quick, "check_in", { session_id: id, code }, { gas: GAS });
+  }
+  t.is((await quick.view("get_member", { account_id: alice.accountId })).status, "proposed");
+
+  await new Promise((r) => setTimeout(r, 11000));
+  const removalId = await host.call(quick, "sweep", { account_id: alice.accountId }, { gas: GAS });
+  const removal = await dao.view("get_proposal", { id: removalId });
+  t.deepEqual(removal.kind, { RemoveMemberFromRole: { member_id: alice.accountId, role: "member" } });
+  t.regex(removal.description, /can earn it back by showing up/);
+
+  const after = await quick.view("get_member", { account_id: alice.accountId });
+  t.is(after.status, "none");
+  t.is(after.removal_proposal_id, removalId);
+  t.is(after.count_in_window, 0, "old check-ins no longer count");
+
+  // One fresh check-in is not enough to re-open the door.
+  await openQ("q4", "Q4");
+  await alice.call(quick, "check_in", { session_id: "q4", code: "Q4" }, { gas: GAS });
+  const back = await quick.view("get_member", { account_id: alice.accountId });
+  t.is(back.count_in_window, 1);
+  t.is(back.status, "none");
+});
+
+test("sweep refuses active members and members without a door", async (t) => {
+  const { host, alice, bob, door, open } = t.context;
+  for (const [id, code] of [["a1", "A1"], ["a2", "A2"], ["a3", "A3"]]) {
+    await open(id, code);
+    await alice.call(door, "check_in", { session_id: id, code }, { gas: GAS });
+  }
+  await t.throwsAsync(host.call(door, "sweep", { account_id: alice.accountId }, { gas: GAS }), { message: /Still active/ });
+  await open("b1", "B1");
+  await bob.call(door, "check_in", { session_id: "b1", code: "B1" }, { gas: GAS });
+  await t.throwsAsync(host.call(door, "sweep", { account_id: bob.accountId }, { gas: GAS }), { message: /no open door/ });
+});
+
+test("upgrade: state saved before inactive_days existed defaults to 30 days", async (t) => {
+  const { host, alice, door, open } = t.context;
+  // Simulate a contract deployed before this field existed: drop it from the stored state.
+  const items = await door.viewStateRaw();
+  const item = items.find((i) => Buffer.from(i.key, "base64").toString() === "STATE");
+  const state = JSON.parse(Buffer.from(item.value, "base64").toString());
+  t.is(state.inactive_days, 30);
+  delete state.inactive_days;
+  await door.patchState("STATE", JSON.stringify(state));
+
+  t.is((await door.view("get_config", {})).inactive_days, 30);
+  for (const [id, code] of [["u1", "U1"], ["u2", "U2"], ["u3", "U3"]]) {
+    await open(id, code);
+    await alice.call(door, "check_in", { session_id: id, code }, { gas: GAS });
+  }
+  await t.throwsAsync(host.call(door, "sweep", { account_id: alice.accountId }, { gas: GAS }), {
+    message: /checked in within the last 30 days/,
+  });
+});

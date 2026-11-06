@@ -20,16 +20,21 @@ Open Door turns showing up into a verifiable, rule-based path to a vote, on top 
 
 Hosts can `void_check_in` a check-in they believe was faked. That account can't re-check-in to that call, and the check-in stops counting.
 
+**Use it or lose it.** A vote earned by showing up isn't permanent. If a member with an open door goes `inactive_days` (default 30) without a check-in, **anyone** can call `sweep`. The contract then files `RemoveMemberFromRole` on the DAO, and the council decides as usual. Old check-ins stop counting, so the member earns the vote back the same way: by showing up again.
+
 ## Do X, see Y
 
 | Do | See |
 |---|---|
-| `npm install && npm test` | The contract builds to `build/open_door.wasm`, and 5 sandbox tests run against the real Sputnik DAO v2 wasm (`res/sputnikdao2.wasm`) |
+| `npm install && npm test` | The contract builds to `build/open_door.wasm`, and 8 sandbox tests run against the real Sputnik DAO v2 wasm (`res/sputnikdao2.wasm`) |
 | Test 1: Alice checks in to 3 calls | After the 3rd check-in, `dao.get_proposal({id:0})` is `AddMemberToRole { member_id: alice, role: "member" }`, proposed by the Open Door contract |
 | Test 2: the council approves, then Alice proposes and votes "pay the host 1 NEAR" | `get_policy` shows Alice in `member`, the transfer proposal is `Approved`, and the host's balance goes up |
 | Test 3: wrong code, the same call twice, a closed call | Each is rejected with a clear error |
 | Test 4: a non-host opens a call, then a host voids a check-in | The non-host is rejected, and Alice's count drops back to 0 |
 | Test 5: read a session through the views | The check-in code hash is never returned |
+| Test 6: `web4_get` on `/` and `/app.js` | The contract serves the web app (HTML and JS), and unknown paths return 404 |
+| Test 7: a voter goes inactive past `inactive_days`, then anyone calls `sweep` | The DAO gets `RemoveMemberFromRole`; old check-ins stop counting; one new check-in isn't enough to get the vote back |
+| Test 8: `sweep` on an active member, or on someone without a vote | Both rejected (`Still active` / `no open door`) |
 
 ## Live on NEAR testnet
 
@@ -78,15 +83,16 @@ The web app is static HTML and JS. It reads state over NEAR JSON-RPC and signs w
 
 | Method | Who | What |
 |---|---|---|
-| `init({dao_id, hosts, threshold, window_days, role, bond})` | deployer | Configure the DAO, the hosts and the rule |
+| `init({dao_id, hosts, threshold, window_days, role, bond, inactive_days})` | deployer | Configure the DAO, the hosts and the rules |
 | `web4_get({request})` | view | Serves the web app (web4) |
 | `open_session({session_id, title, duration_minutes, code_hash})` | host | Open a call. `code_hash = sha256("<session_id>:<CODE>")`, with the code uppercased |
 | `close_session({session_id})` | host | Close a call early |
 | `void_check_in({session_id, account_id})` | host | Remove a faked check-in |
+| `sweep({account_id})` | anyone | If an earned voter hasn't checked in for `inactive_days`, file `RemoveMemberFromRole` on the DAO ("use it or lose it") |
 | `check_in({session_id, code})` | anyone | Check in. On reaching the threshold, files the DAO proposal |
 | `get_config`, `get_session`, `get_sessions`, `get_member`, `get_members` | view | Public board data. Never returns code hashes |
 
-Events (NEP-297 style, `standard: "open_door"`): `session_opened`, `checked_in`, `door_opened`, `door_failed`, `check_in_voided`, `session_closed`.
+Events (NEP-297 style, `standard: "open_door"`): `session_opened`, `checked_in`, `door_opened`, `door_failed`, `door_closed`, `door_close_failed`, `check_in_voided`, `session_closed`.
 
 ## DAO set-up (Sputnik DAO v2)
 

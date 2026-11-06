@@ -26,7 +26,7 @@ Hosts can `void_check_in` a check-in they believe was faked. That account can't 
 
 | Do | See |
 |---|---|
-| `npm install && npm test` | The contract builds to `build/open_door.wasm`, and 8 sandbox tests run against the real Sputnik DAO v2 wasm (`res/sputnikdao2.wasm`) |
+| `npm install && npm test` | The contract builds to `build/open_door.wasm`, and 9 sandbox tests run against the real Sputnik DAO v2 wasm (`res/sputnikdao2.wasm`) |
 | Test 1: Alice checks in to 3 calls | After the 3rd check-in, `dao.get_proposal({id:0})` is `AddMemberToRole { member_id: alice, role: "member" }`, proposed by the Open Door contract |
 | Test 2: the council approves, then Alice proposes and votes "pay the host 1 NEAR" | `get_policy` shows Alice in `member`, the transfer proposal is `Approved`, and the host's balance goes up |
 | Test 3: wrong code, the same call twice, a closed call | Each is rejected with a clear error |
@@ -35,6 +35,7 @@ Hosts can `void_check_in` a check-in they believe was faked. That account can't 
 | Test 6: `web4_get` on `/` and `/app.js` | The contract serves the web app (HTML and JS), and unknown paths return 404 |
 | Test 7: a voter goes inactive past `inactive_days`, then anyone calls `sweep` | The DAO gets `RemoveMemberFromRole`; old check-ins stop counting; one new check-in isn't enough to get the vote back |
 | Test 8: `sweep` on an active member, or on someone without a vote | Both rejected (`Still active` / `no open door`) |
+| Test 9: state saved before `inactive_days` existed (an in-place upgrade) | `get_config` reports 30 days, and `sweep` still refuses an active member |
 
 ## Live on NEAR testnet
 

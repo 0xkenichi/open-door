@@ -16,10 +16,27 @@ let modal = null;
 let accountId = null;
 let config = null;
 
+// Read-only replay (?block=<height>): every view runs against that block on an archival node,
+// so a past moment can be shown exactly as it was on chain.
+const params = new URLSearchParams(location.search);
+const replayBlock = /^\d+$/.test(params.get("block") || "") ? Number(params.get("block")) : null;
+let replayNowNs = null;
+
 // ---------- chain reads ----------
 
+async function rpc(method, params) {
+  const res = await fetch(replayBlock ? CONFIG.archivalNodeUrl : CONFIG.nodeUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: "open-door", method, params }),
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.data || json.error.message);
+  return json.result;
+}
+
 async function view(contractId, method, args = {}) {
-  const res = await fetch(CONFIG.nodeUrl, {
+  const res = await fetch(replayBlock ? CONFIG.archivalNodeUrl : CONFIG.nodeUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -28,7 +45,7 @@ async function view(contractId, method, args = {}) {
       method: "query",
       params: {
         request_type: "call_function",
-        finality: "optimistic",
+        ...(replayBlock ? { block_id: replayBlock } : { finality: "optimistic" }),
         account_id: contractId,
         method_name: method,
         args_base64: btoa(JSON.stringify(args)),
@@ -46,7 +63,7 @@ async function sha256Hex(text) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-const nowNs = () => BigInt(Date.now()) * 1_000_000n;
+const nowNs = () => replayNowNs ?? BigInt(Date.now()) * 1_000_000n;
 const short = (id) => (id.length > 28 ? `${id.slice(0, 12)}…${id.slice(-12)}` : id);
 const explorerAccount = (id) => `${CONFIG.explorer}/address/${id}`;
 
@@ -167,30 +184,34 @@ $("checkin-form").addEventListener("submit", async (e) => {
 // ---------- record ----------
 
 // Read-only "view as" mode (?as=account.testnet): shows anyone's public path to a vote without signing in.
-const viewAs = new URLSearchParams(location.search).get("as");
+const viewAs = params.get("as");
 
 async function renderRecord(voters) {
   const box = $("record");
+  const door = $("doorway");
   const who = accountId || viewAs;
   if (!who) {
-    box.innerHTML = `<p class="muted">Sign in to see your check-ins.</p>`;
+    door.style.setProperty("--open", 0);
+    box.innerHTML = `<p class="soft">Sign in to see your path to a vote.</p>`;
     return;
   }
   const m = await view(CONFIG.doorId, "get_member", { account_id: who });
-  const viewing = !accountId ? `<p class="muted">Viewing ${short(who)} (read-only)</p>` : "";
   const count = m?.count_in_window ?? 0;
   const threshold = config.threshold;
+  const isVoter = voters.includes(who);
+  // The leaf swings with progress: a third per call, nearly open once proposed, open for a voter.
+  door.style.setProperty("--open", isVoter ? 1 : m?.status === "proposed" ? 0.8 : Math.min(count, threshold) / threshold * 0.55);
+  const you = accountId ? "you" : short(who);
   const dots = Array.from({ length: threshold }, (_, i) => `<span class="dot ${i < count ? "on" : ""}"></span>`).join("");
   let line;
-  if (voters.includes(who)) line = `${accountId ? "You're" : "They're"} a voter. The door is open.`;
-  else if (m?.status === "proposed")
-    line = `Proposal #${m.proposal_id} to give ${accountId ? "you" : "them"} a vote is waiting for the council.`;
-  else line = `${Math.max(0, threshold - count)} more call(s) in ${config.window_days} days to earn ${accountId ? "your" : "their"} vote.`;
-  box.innerHTML = `${viewing}
+  if (isVoter) line = `${accountId ? "You're" : `${short(who)} is`} a voter. The door is open.`;
+  else if (m?.status === "proposed") line = `Proposal #${m.proposal_id} to give ${you} a vote is waiting for the council.`;
+  else line = `${Math.max(0, threshold - count)} more call${threshold - count === 1 ? "" : "s"} in ${config.window_days} days to earn ${accountId ? "your" : "their"} vote.`;
+  box.innerHTML = `${!accountId ? `<p class="soft">${short(who)} · read-only</p>` : ""}
     <div class="dots" aria-label="${count} of ${threshold} check-ins">${dots}</div>
     <p class="big">${count} of ${threshold} calls</p>
     <p>${line}</p>
-    ${m?.proposal_id != null ? `<p class="muted">DAO: <a href="${explorerAccount(CONFIG.daoId)}" target="_blank" rel="noopener">${short(CONFIG.daoId)}</a> · proposal #${m.proposal_id}</p>` : ""}`;
+    ${m?.proposal_id != null ? `<p class="soft">DAO <a href="${explorerAccount(CONFIG.daoId)}" target="_blank" rel="noopener">${short(CONFIG.daoId)}</a> · proposal #${m.proposal_id}</p>` : ""}`;
 }
 
 // ---------- host ----------
@@ -288,13 +309,27 @@ async function refresh() {
 }
 
 async function main() {
+  if (replayBlock) {
+    const block = await rpc("block", { block_id: replayBlock });
+    replayNowNs = BigInt(block.header.timestamp_nanosec);
+    const when = new Date(Number(replayNowNs / 1_000_000n));
+    const live = new URL(location.href);
+    live.searchParams.delete("block");
+    $("replay").hidden = false;
+    $("replay").innerHTML = `Replay: on-chain state at block ${replayBlock.toLocaleString()} (${when.toUTCString().replace(" GMT", " UTC")}). Read-only. <a href="${live}">Back to live</a>`;
+    $("badge").textContent = when.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+    $("auth").textContent = "Replay";
+    $("auth").disabled = true;
+    for (const el of $("checkin-form").elements) el.disabled = true;
+  }
   config = await view(CONFIG.doorId, "get_config");
+  $("lede").textContent = `Check in at ${config.threshold} community calls within ${config.window_days} days, and the contract proposes you for the DAO's "${config.role}" role. The council approves, and you're in.`;
   $("rule").textContent =
-    `${config.threshold} check-ins within ${config.window_days} days files a proposal to add you to "${config.role}". The DAO council approves it. ` +
-    `Use it or lose it: after ${config.inactive_days ?? 30} days without a check-in, anyone can ask the council to remove the role. Show up again to earn it back.`;
+    // Contracts deployed before "use it or lose it" have no inactive_days, so a replay of that time says nothing about it.
+    (config.inactive_days != null ? `Use it or lose it: after ${config.inactive_days} days without a check-in, anyone can ask the council to remove the role. Show up again to earn it back.` : "");
   $("links").innerHTML = `<a href="${explorerAccount(CONFIG.doorId)}" target="_blank" rel="noopener">Contract</a> · <a href="${explorerAccount(CONFIG.daoId)}" target="_blank" rel="noopener">DAO</a> · <a href="${CONFIG.repo}" target="_blank" rel="noopener">Code</a>`;
   await refresh();
-  initWallet().then(refresh);
+  if (!replayBlock) initWallet().then(refresh);
 }
 
 main();

@@ -5,63 +5,75 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Open Door · Show up, get a say</title>
   <meta name="description" content="Earn a vote in your community's DAO by showing up. Built on Sputnik DAO, NEAR." />
-  <meta name="theme-color" content="#0f1115" />
+  <meta name="theme-color" content="#f3ece6" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Stack+Sans+Headline:wght@500;700&family=Stack+Sans+Text:wght@400;500&display=swap" />
   <link rel="stylesheet" href="https://unpkg.com/@near-wallet-selector/modal-ui@10.1.4/styles.css" />
-  <link rel="stylesheet" href="./styles.css?v=3" />
+  <link rel="stylesheet" href="./styles.css?v=5" />
 </head>
 <body>
   <header class="top">
-    <div class="brand">
-      <span class="door" aria-hidden="true"></span>
-      <div>
-        <h1>Open Door</h1>
-        <p class="tag">Show up, get a say.</p>
-      </div>
-    </div>
+    <a class="brand" href="./" aria-label="Open Door home"><span class="glyph" aria-hidden="true"></span>Open Door</a>
     <div class="top-right">
-      <span class="pill" id="network">NEAR testnet</span>
-      <button id="auth" class="btn">Sign in</button>
+      <span class="pill ghost" id="network">NEAR testnet</span>
+      <button id="auth" class="btn dark">Sign in</button>
     </div>
   </header>
 
+  <div class="replay" id="replay" hidden></div>
+
+  <section class="hero">
+    <div class="hero-text">
+      <span class="date-badge" id="badge">Community calls · NEAR testnet</span>
+      <h1 class="split"><span class="a">Show up,</span> <span class="b">get a say.</span></h1>
+      <p class="lede" id="lede">Check in at community calls, and the contract proposes you for a vote in the DAO. The council approves, and you're in.</p>
+      <p class="rule" id="rule"></p>
+    </div>
+    <div class="door-card" id="record-card">
+      <div class="doorway" id="doorway" style="--open: 0" aria-hidden="true">
+        <div class="room">You're in</div>
+        <div class="leaf"><span class="knob"></span></div>
+      </div>
+      <div id="record"><p class="soft">Sign in to see your path to a vote.</p></div>
+    </div>
+  </section>
+
   <main>
     <section class="card" id="checkin-card">
-      <h2>Today's call</h2>
+      <span class="kicker">01 · Today's call</span>
+      <h2>Check in</h2>
       <p class="muted" id="session-hint">Loading calls…</p>
       <form id="checkin-form" class="row" autocomplete="off">
         <select id="session" aria-label="Call"></select>
         <input id="code" placeholder="Code read out on the call" aria-label="Check-in code" maxlength="32" />
-        <button class="btn primary" id="checkin-btn" type="submit">Check in</button>
+        <button class="btn dark" id="checkin-btn" type="submit">Check in</button>
       </form>
       <p class="status" id="checkin-status" role="status"></p>
     </section>
 
-    <section class="card" id="record-card">
-      <h2>Your path to a vote</h2>
-      <div id="record"><p class="muted">Sign in to see your check-ins.</p></div>
-    </section>
-
     <section class="card" id="host-card" hidden>
+      <span class="kicker">02 · Hosts</span>
       <h2>Host a call</h2>
       <form id="host-form" class="row" autocomplete="off">
         <input id="host-title" placeholder="Call title, e.g. Community call #4" required />
         <input id="host-minutes" type="number" min="10" max="600" value="120" aria-label="Minutes open" />
-        <button class="btn primary" type="submit">Open call</button>
+        <button class="btn dark" type="submit">Open call</button>
       </form>
       <div id="host-code" class="bigcode" hidden></div>
       <div id="host-sessions"></div>
     </section>
 
     <section class="card wide" id="board-card">
-      <h2>The door</h2>
-      <p class="muted" id="rule"></p>
+      <span class="kicker">The door</span>
+      <h2>Who's showing up</h2>
       <div class="grid2">
         <div>
-          <h3>Showing up</h3>
+          <h3>Checking in</h3>
           <ul id="members" class="list"><li class="muted">Loading…</li></ul>
         </div>
         <div>
-          <h3>DAO voters (member role)</h3>
+          <h3>DAO voters · member role</h3>
           <ul id="voters" class="list"><li class="muted">Loading…</li></ul>
         </div>
       </div>
@@ -69,10 +81,10 @@
   </main>
 
   <footer>
-    <span>Built on <a href="https://github.com/near-daos/sputnik-dao-contract">Sputnik DAO</a>: no new multisig.</span>
+    <span>Built on <a href="https://github.com/near-daos/sputnik-dao-contract">Sputnik DAO</a>, with no new multisig. Open Door proposes; the DAO decides.</span>
     <span id="links"></span>
   </footer>
 
-  <script type="module" src="./app.js?v=5"></script>
+  <script type="module" src="./app.js?v=7"></script>
 </body>
 </html>

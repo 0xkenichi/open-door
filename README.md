@@ -35,6 +35,7 @@ Hosts can `void_check_in` a check-in they believe was faked. That account can't 
 | Test 6: `web4_get` on `/` and `/app.js` | The contract serves the web app (HTML and JS), and unknown paths return 404 |
 | Test 7: a voter goes inactive past `inactive_days`, then anyone calls `sweep` | The DAO gets `RemoveMemberFromRole`; old check-ins stop counting; one new check-in isn't enough to get the vote back |
 | Test 8: `sweep` on an active member, or on someone without a vote | Both rejected (`Still active` / `no open door`) |
+| Open https://opendoor-door-vw50k1.testnet.page/?as=ada-6geh.testnet&block=275600711, then change the block to `275601400` | Ada at 0 of 3 with the door shut, then a voter with the door open: real on-chain state, replayed from an archival node |
 | Test 9: state saved before `inactive_days` existed (an in-place upgrade) | `get_config` reports 30 days, and `sweep` still refuses an active member |
 
 ## Live on NEAR testnet
@@ -61,6 +62,12 @@ To see a member's earned vote, open https://opendoor-door-vw50k1.testnet.page/?a
 - Ada proposes payout #3: [tx](https://testnet.nearblocks.io/txns/HteCwKCPs11ybZX6JvPodyjNBVwuDjP4p3YhKB4JQKD1). With two earned voters, Sputnik needs a majority, so Ada [votes](https://testnet.nearblocks.io/txns/HJMVCyGtDsoWJu8zHF8ARYoHbmS9AWJE3mjdB8NnQz71) and Alice [votes](https://testnet.nearblocks.io/txns/C6bc82apDTjNoPBiDFV7LLrym2Woug4nSRVqz29R8Hjj). Status: `Approved`, and 0.2 NEAR goes to the host.
 
 To view any member's progress without signing in, open the web app with `?as=<account>`, for example `?as=ada-6geh.testnet`.
+
+**Replay any moment from the chain.** Add `&block=<height>` and the app reads every view at that block from a NEAR archival node, read-only. Ada's run, as it happened:
+- 0 of 3, call #1 open: [`?as=ada-6geh.testnet&block=275600711`](https://opendoor-door-vw50k1.testnet.page/?as=ada-6geh.testnet&block=275600711)
+- 1 of 3: [`&block=275600800`](https://opendoor-door-vw50k1.testnet.page/?as=ada-6geh.testnet&block=275600800)
+- proposal #2 filed: [`&block=275601000`](https://opendoor-door-vw50k1.testnet.page/?as=ada-6geh.testnet&block=275601000)
+- voter: [`&block=275601400`](https://opendoor-door-vw50k1.testnet.page/?as=ada-6geh.testnet&block=275601400)
 
 To run your own copy:
 - `npm run build && node scripts/deploy-testnet.mjs` creates fresh demo accounts through the testnet helper, a DAO through the factory, and the contract.
@@ -106,6 +113,7 @@ The DAO policy has three roles:
 
 ## Built with
 - `near-sdk-js` 2.0.0, `near-workspaces` 5.0.0, `ava`.
+- **Design:** the web app's look takes its cue from Foyer, a free Framer template by Sasha Mozdir: warm cream, a split-colour headline, and dark pill buttons. No template code or assets are used. Type is Stack Sans, from Google Fonts.
 - Sputnik DAO v2 (unmodified): the wasm in `res/` was read with `view_code` from a live DAO created by `sputnik-v2.testnet`.
 - **AI disclosure:** the contract, tests and docs were written with Claude Code (Anthropic) as a pair programmer, directed and reviewed by the author.
 - **Baseline:** this is a new repository started on 31 Oct 2026. It uses no code from the author's other projects.

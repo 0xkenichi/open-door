@@ -109,6 +109,7 @@ The DAO policy has three roles:
 - Sputnik DAO v2 (unmodified): the wasm in `res/` was read with `view_code` from a live DAO created by `sputnik-v2.testnet`.
 - **AI disclosure:** the contract, tests and docs were written with Claude Code (Anthropic) as a pair programmer, directed and reviewed by the author.
 - **Baseline:** this is a new repository started on 31 Oct 2026. It uses no code from the author's other projects.
+- **My other NEAR HACKATHON project:** [NEAR Settlement Thesis](https://github.com/0xkenichi/near-settlement-thesis) (Investment Thesis track), an evidence-first thesis on NEAR with a live dashboard. The two are independent: different tracks, different repositories, and no shared code. Both serve their web pages through web4.
 
 ## License
 MIT. See `LICENSE`.
